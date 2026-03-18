@@ -1,0 +1,58 @@
+// Automatically generated .v file on Tue Mar 17 18:58:29 2026
+//
+
+module sar_log ( sample, clk, outp, outn, code0, code6, code5, code4, code3, code2, code1, done ) ;
+   input sample;
+   input clk;
+   input outp;
+   input outn;
+   output code0;
+   output code6;
+   output code5;
+   output code4;
+   output code3;
+   output code2;
+   output code1;
+   output reg done;
+
+   // Internal register to hold the 7-bit conversion result
+   reg [6:0] sar_reg;
+   // Pointer to keep track of which bit is currently being tested (6 down to 0)
+   integer bit_ptr;
+
+   // Continuous assignments to map the internal register to the individual output ports
+   assign code6 = sar_reg[6];
+   assign code5 = sar_reg[5];
+   assign code4 = sar_reg[4];
+   assign code3 = sar_reg[3];
+   assign code2 = sar_reg[2];
+   assign code1 = sar_reg[1];
+   assign code0 = sar_reg[0];
+
+   always @(posedge clk or posedge sample) begin
+      if (sample) begin
+         // Reset state: Set MSB to 1, others to 0 to start the binary search at VDD/2
+         sar_reg <= 7'b1000000;
+         bit_ptr <= 6;
+         done    <= 1'b0;
+      end else if (!done) begin
+         // 1. Evaluate the comparator's decision for the CURRENT bit
+         // If outp < outn, the trial voltage was too high; set current bit to 0.
+         // If outp > outn, keep the current bit as 1.
+         if (outp < outn) begin
+            sar_reg[bit_ptr] <= 1'b0;
+         end
+
+         // 2. Move to the next bit
+         if (bit_ptr > 0) begin
+            // Set the NEXT lower bit to 1 for the next comparison cycle
+            sar_reg[bit_ptr - 1] <= 1'b1;
+            bit_ptr <= bit_ptr - 1;
+         end else begin
+            // All bits (6 down to 0) have been processed
+            done <= 1'b1;
+         end
+      end
+   end
+
+endmodule
